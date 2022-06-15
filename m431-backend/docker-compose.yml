@@ -1,0 +1,41 @@
+version: "3"
+
+services:
+  django:
+    restart: always
+    build:
+      context: ./django/
+      dockerfile: Dockerfile-local
+    container_name: django-quickstarter-projet
+    ports:
+        - "8003:8000"
+    environment:
+      - SECRET_KEY=5(15ds+i2+%ik6z&!yer+ga9m=e%jcqiz_5wszg)r-z!2--b2d
+      - DEBUG=True
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=123456
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DJANGO_SUPERUSER_NAME=admin
+      - DJANGO_SUPERUSER_MAIL=theoribb@gmail.com
+      - DJANGO_SUPERUSER_PASSWORD=123456
+    volumes:
+      - ./django/mysite:/var/www/django/mysite
+      # - ./django/mysite/static:/var/www/django/mysite/static
+    working_dir: /var/www/django/mysite
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - postgres
+
+  postgres:
+    restart: always
+    container_name: postgres-projet
+    build: ./postgres/
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_PASSWORD=123456
+    volumes:
+      - ./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - /var/lib/postgresql

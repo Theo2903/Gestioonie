@@ -1,0 +1,7 @@
+.tableprofile tr:first-child > td {
+    border-top-color: transparent;
+}
+
+.tableprofile tr > td:first-child {
+    color: #9d9d9d;
+}

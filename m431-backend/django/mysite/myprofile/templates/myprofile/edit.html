@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+{% load bootstrap4 %}
+{% load i18n %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-md-center">
+        <div class="col-lg-6 border mt-5 p-5">
+            <h2>{% trans "Modifier mon compte" %}</h2>
+
+            <form method="post" enctype="multipart/form-data">{% csrf_token %}
+                {% bootstrap_form user_form %}
+                {% bootstrap_form user_profile_form %}
+                {% buttons %}
+                    <button type="submit" class="btn btn-primary">{% trans 'Valider' %}</button>
+                {% endbuttons %}
+            </form>
+        </div> <!-- .col -->
+    </div> <!-- .row -->
+</div>
+{% endblock %}

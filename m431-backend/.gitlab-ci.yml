@@ -1,0 +1,89 @@
+image: alpine:latest
+
+variables:
+  K8S_APP_NAME: django-quickstart
+  K8S_DB_NAME: django-quickstart
+  KUBERNETES_VERSION: 1.14.6
+
+stages:
+  - build
+  - integration
+  - pre-production
+#  - test
+#  - review
+#  - dast
+#  - staging
+#  - canary
+  - production
+#  - performance
+#  - cleanup
+
+build:
+  stage: build
+  image: docker:stable-git
+  services:
+  - docker:stable-dind
+  script: |
+    install_dependencies
+    setup_docker
+    build
+  only:
+    - branches
+  when: manual
+
+deploy_int:
+  stage: integration
+  image: docker:stable-git
+  services:
+  - docker:stable-dind
+  variables:
+    K8S_ENV: int
+    K8S_DB_USER: django-quickstart
+    K8S_APP_URL: django-quickstart-int.palexpo.ch
+    K8S_TLS_SECRET: palexpo-wildcard
+  script: |
+    install_dependencies
+    template
+    kubectl apply -n $K8S_APP_NAME-$K8S_ENV -f deploy.yml
+  only:
+    - branches
+  when: manual
+
+deploy_ppd:
+  stage: pre-production
+  image: docker:stable-git
+  services:
+  - docker:stable-dind
+  variables:
+    K8S_ENV: ppd
+    K8S_DB_USER: django-quickstart
+    K8S_APP_URL: django-quickstart-ppd.palexpo.ch
+    K8S_TLS_SECRET: palexpo-wildcard
+  script: |
+    install_dependencies
+    template
+    kubectl apply -n $K8S_APP_NAME-$K8S_ENV -f deploy.yml
+  only:
+    - branches
+  when: manual
+
+deploy_prod:
+  stage: production
+  image: docker:stable-git
+  services:
+  - docker:stable-dind
+  variables:
+    K8S_ENV: prd
+    K8S_DB_USER: django-quickstart
+    K8S_APP_URL: django-quickstart.palexpo.ch
+    K8S_TLS_SECRET: palexpo-wildcard
+  script: |
+    install_dependencies
+    template
+    kubectl apply -n $K8S_APP_NAME-$K8S_ENV -f deploy.yml
+  only:
+    - branches
+  when: manual
+
+before_script:
+  - . scripts.sh

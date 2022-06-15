@@ -1,0 +1,19 @@
+FROM python:3.8
+
+# Initialize
+RUN apt-get update
+
+# Setup
+COPY entrypoint.sh /var/www/django/entrypoint.sh
+RUN chmod +x /var/www/django/entrypoint.sh
+
+# Prepare
+COPY requirements.txt /var/www/django/
+WORKDIR /var/www/django
+RUN pip install -r requirements.txt
+COPY mysite /var/www/django/mysite/
+RUN mkdir -p mysite/static/admin
+
+WORKDIR /var/www/django/mysite
+
+ENTRYPOINT ["/var/www/django/entrypoint.sh"]

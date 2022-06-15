@@ -1,0 +1,29 @@
+{% extends "myprofile/base.html" %}
+{% load i18n %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row justify-content-md-center">
+        <div class="col-lg-6 border mt-5 p-5">
+            <h2>{% trans "My account" %}</h2>
+            <div class="table-responsive">
+                <table class="table tableprofile">
+                    <tr>
+                        <td>{% trans "First name" %}:</td><td>{{request.user.first_name}}</td>
+                    </tr>
+                    <tr>
+                        <td>{% trans "Last name" %}:</td><td>{{request.user.last_name}}</td>
+                    </tr>
+                    <tr>
+                        <td>{% trans "Email" %}:</td><td>{{request.user.email}}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <a href="{% url 'myprofile:edit' %}" class="btn btn-info">{% trans "Edit" %}</a>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

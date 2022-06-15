@@ -1,0 +1,216 @@
+---
+# Source: django/templates/externaldb-secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ deployment-name }}-externaldb
+  labels:
+    app: {{ deployment-name }}-externaldb
+    release: "{{ deployment-name }}"
+type: Opaque
+data:
+  # TODO insert db password | base64 here
+  db-password: {{ db-password }}
+---
+# Source: django/templates/secrets.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ deployment-name }}-django
+  labels:
+    app: {{ deployment-name }}-django
+    release: "{{ deployment-name }}"
+type: Opaque
+data:
+  django-superuser-password: {{ django-superuser-password }}
+  smtp-password: ""
+---
+# Source: django/templates/pvc.yaml
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ deployment-name }}-django
+  labels:
+    app: {{ deployment-name }}-django
+    release: "{{ release-name }}"
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  # TODO - change class name depending on name and env
+  #
+  storageClassName: {{ deployment-name }}
+  resources:
+    requests:
+      storage: "5Gi"
+---
+# Source: django/templates/deployment.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ deployment-name }}
+  labels:
+    app: {{ deployment-name }}
+    release: "{{ deployment-name }}"
+spec:
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: {{ deployment-name }}
+      release: "{{ deployment-name }}"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ deployment-name }}
+        release: "{{ deployment-name }}"
+        version: "{{ app-version }}"
+    spec:
+      imagePullSecrets:
+        - name: registrypullsecret
+      hostAliases:
+      - ip: "127.0.0.1"
+        hostnames:
+        - "status.localhost"
+      containers:
+      - name: django
+        image: {{ image }}
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: NGINX_SERVER_NAME
+            value: {{ app-url }}
+          - name: SECRET_KEY
+            value: "5(15ds+i2+%ik6z&!yer+ga9m=e%jcqiz_5wszg)r-z!2--b2d"
+          - name: DEBUG
+            value: "False"
+          - name: DB_HOST
+            value: "mariadb-svc"
+          - name: DB_PORT
+            value: "3306"
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ deployment-name }}-externaldb
+                key: db-password
+          - name: DB_USER
+            value: "{{ db-user }}"
+          - name: DB_NAME
+            value: "{{ db-name }}"
+          - name: DJANGO_SUPERUSER_NAME
+            value: "{{ django-superuser-name }}"
+          - name: DJANGO_SUPERUSER_MAIL
+            value: "{{ django-superuser-mail }}"
+          - name: DJANGO_SUPERUSER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ deployment-name }}-django
+                key: django-superuser-password
+
+        ports:
+          - name: http
+            containerPort: 80
+          - name: https
+            containerPort: 443
+          - name: gunicorn
+            containerPort: 8000
+        livenessProbe:
+          httpGet:
+            path: /status/
+            port: 8000
+          failureThreshold: 6
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+
+        readinessProbe:
+          httpGet:
+            path: /status/
+            port: 8000
+          failureThreshold: 10
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+
+        volumeMounts:
+        - mountPath: /var/www/django/media
+          name: django-data
+          subPath: media
+        resources:
+          requests:
+            cpu: 300m
+            memory: 512Mi
+
+      volumes:
+        - name: django-data
+          persistentVolumeClaim:
+            claimName: {{ deployment-name }}-django
+      #TODO test on full cluster
+      nodeSelector:
+        env: {{ env }}
+
+
+---
+# Source: django/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ deployment-name }}
+  labels:
+    app: {{ deployment-name }}
+    release: "{{ deployment-name }}"
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: https
+      port: 443
+      targetPort: https
+    - name: gunicorn
+      port: 8000
+      targetPort: gunicorn
+  selector:
+    app: {{ deployment-name }}
+---
+# Source: django/templates/ingress.yaml
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "{{ deployment-name }}"
+spec:
+  rules:
+  - host: {{ app-url }}
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: {{ deployment-name }}
+            servicePort: gunicorn
+        - path: /media
+          backend:
+            serviceName: {{ deployment-name }}
+            servicePort: http
+        - path: /static
+          backend:
+            serviceName: {{ deployment-name }}
+            servicePort: http
+  tls:
+    - hosts:
+      - {{ app-url }}
+      secretName: {{ tls-secret-name }}
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/dockerconfigjson
+metadata:
+  name: registrypullsecret
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJyZWdpc3RyeS5wYWxleHBvLmNoIjogewoJCQkiYXV0aCI6ICJhemh6TFhCMWJHd3RkRzlyWlc0NmIweE5kRmRMT1ZwRVUzbHBXRTFZYVRObFJWST0iCgkJfQoJfQp9

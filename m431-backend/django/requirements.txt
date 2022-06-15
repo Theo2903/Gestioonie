@@ -1,0 +1,14 @@
+Django==3.1
+gunicorn==19.6.0
+psycopg2
+django-allauth
+Pillow
+django-debug-toolbar
+sorl-thumbnail
+django-bootstrap4
+django-crispy-forms
+djangorestframework-jwt
+djangorestframework
+django-filter
+drf-yasg
+django-cors-headers
